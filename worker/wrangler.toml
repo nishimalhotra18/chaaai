@@ -1,0 +1,7 @@
+name = "chaaai-dobby"
+main = "src/index.js"
+compatibility_date = "2026-09-29"
+
+[vars]
+ALLOWED_ORIGIN = "https://chaaai.com"
+OPENAI_MODEL = "gpt-5-mini"
