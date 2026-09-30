@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#050806" />
+  <title>CHAAAI // Dobby Online</title>
+  <meta name="description" content="Master Chai's unofficial system interface. Powered by Dobby." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="terminal" aria-label="CHAAAI terminal">
+      <header class="terminal__bar">
+        <div class="brand"><span class="bot">◉</span><span>CHAAAI SYSTEM</span></div>
+        <div class="live"><span class="live__dot"></span>DOBBY ONLINE</div>
+      </header>
+
+      <div id="screen" class="screen" aria-live="polite">
+        <div class="boot">
+          <p><span class="dim">[boot]</span> initializing dobby...</p>
+          <p><span class="dim">[ok]</span> master_chai interface loaded</p>
+          <p><span class="dim">[ok]</span> sarcasm module enabled</p>
+          <p><span class="dim">[ok]</span> workers.io uplink detected</p>
+        </div>
+
+        <div class="hero">
+          <pre class="dobby" aria-hidden="true">
+        .-.
+       (o o)
+       | O \
+        \   \
+         `~~~'
+      DOBBY_v1
+          </pre>
+          <h1>CHAAAI</h1>
+          <p class="subtitle">Master Chai's unofficial system interface.</p>
+          <button id="locateBtn" class="command-btn">&gt; ASK DOBBY WHERE CHAI IS</button>
+        </div>
+
+        <div id="conversation" class="conversation hidden"></div>
+
+        <form id="askForm" class="prompt hidden" autocomplete="off">
+          <label for="question"><span class="prompt__user">visitor@chaaai</span>:<span class="prompt__path">~</span>$</label>
+          <input id="question" maxlength="280" placeholder="ask Dobby something else..." />
+          <button type="submit" aria-label="Send">↵</button>
+        </form>
+      </div>
+
+      <footer class="statusbar">
+        <span>SESSION <strong id="sessionState">ACTIVE</strong></span>
+        <span>QUERY BUDGET <strong id="budget">3</strong></span>
+      </footer>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
