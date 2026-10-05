@@ -51,9 +51,22 @@ for(let x=2.25;x<3.9;x+=.52)for(let z=.38;z<1.2;z+=.45){const s=mesh(new THREE.S
 const perch=box(1.1,.1,.35,wood,-3.55,4.75,-2.1);const owlBody=mesh(new THREE.SphereGeometry(.38,18,14),mat(0x9b7651,.95),-3.55,5.3,-2.05);owlBody.scale.set(.8,1.25,.75);const owlHead=mesh(new THREE.SphereGeometry(.34,18,14),mat(0xb49168,.95),-3.55,5.72,-2.04);addInteractive(owlHead,"WORKSHOP OWL",()=>say("Letters for Master Chai. Mostly meeting invites. Tragic."));
 // to-do board
 const todo=box(1.7,2.05,.08,label("DOBBY / TO-DO\n01 HELP CHAI\n02 PROTECT COMPUTE\n03 FIND SOCKS\n04 MORE WORK",-1),-2.15,4.35,-3.15);addInteractive(todo,"DOBBY'S TO-DO LIST",()=>say("Item one is ongoing. Item four keeps reproducing."));
-// magical portrait frames, original silhouettes
-function portrait(x,y,w,h,c1,c2,title){const frame=box(w+.18,h+.18,.12,brass,x,y,-3.05);const art=box(w,h,.07,new THREE.MeshStandardMaterial({map:canvasTexture((g,W,H)=>{const gr=g.createLinearGradient(0,0,W,H);gr.addColorStop(0,c1);gr.addColorStop(1,c2);g.fillStyle=gr;g.fillRect(0,0,W,H);g.fillStyle="rgba(18,20,18,.72)";g.beginPath();g.arc(W*.5,H*.38,H*.16,0,Math.PI*2);g.fill();g.fillRect(W*.37,H*.53,W*.26,H*.36);g.fillStyle="rgba(245,220,165,.75)";g.font="700 22px serif";g.textAlign="center";g.fillText(title,W/2,H-18)}),roughness:.72}),x,y,-2.97);addInteractive(art,title,()=>say(title+" has declined to comment on Master Chai's work schedule."));}
-portrait(.1,4.7,1.15,1.55,"#244a49","#a5653e","THE FOUNDER");portrait(1.55,4.45,.95,1.25,"#552e45","#c19055","THE WIZARD");portrait(2.72,4.8,.8,1.05,"#233a61","#708f73","NIGHT SHIFT");
+// three magical portraits — each has its own character, motion and story
+const portraits=[];
+function portrait(x,y,w,h,c1,c2,title,kind,line){
+  const frame=box(w+.18,h+.18,.12,brass,x,y,-3.05);
+  const art=box(w,h,.07,new THREE.MeshStandardMaterial({map:canvasTexture((g,W,H)=>{
+    const gr=g.createLinearGradient(0,0,W,H);gr.addColorStop(0,c1);gr.addColorStop(1,c2);g.fillStyle=gr;g.fillRect(0,0,W,H);
+    g.fillStyle="rgba(18,20,18,.72)";g.beginPath();g.arc(W*.5,H*.38,H*.16,0,Math.PI*2);g.fill();g.fillRect(W*.37,H*.53,W*.26,H*.36);
+    g.fillStyle="rgba(245,220,165,.78)";g.font="700 22px serif";g.textAlign="center";g.fillText(title,W/2,H-18);
+  }),roughness:.72}),x,y,-2.97);
+  art.userData.portraitKind=kind; art.userData.baseX=x; art.userData.baseY=y; art.userData.baseZ=-2.97; portraits.push(art);
+  addInteractive(art,title,()=>{art.userData.magic=1; say(line,3600);});
+  return art;
+}
+portrait(.1,4.7,1.15,1.55,"#31574e","#b87943","THE HOUSEKEEPER","chores","Dobby, your socks are still on the stairs. And the owl has not been fed. Master Chai working is not an excuse.");
+portrait(1.55,4.45,.95,1.25,"#59344f","#c49a58","THE PROFESSOR","hogwarts","A message from Hogwarts: Dobby is reminded that wandering corridors after curfew remains frowned upon.");
+portrait(2.72,4.8,.8,1.05,"#29436b","#769478","NIGHT SHIFT","chai","Master Chai status report: still working. Meeting count: unreasonable. Probability of stopping soon: extremely low.");
 // parchment + quill
 const parchment=box(1.3,.025,.9,paper,-.55,2.08,1.0);addInteractive(parchment,"MASTER CHAI NOTES",()=>say("Dobby cannot read Master Chai's handwriting either."));
 const pencil=box(1.35,.045,.045,mat(0xe4a735,.55),.65,2.14,1.1);addInteractive(pencil,"ROLL THE PENCIL",()=>{pencil.userData.roll=1;say("Dobby was using that.");});
@@ -94,6 +107,14 @@ document.querySelector("#askForm").addEventListener("submit",async e=>{e.prevent
 // resize/render
 function resize(){const r=viewport.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix()}new ResizeObserver(resize).observe(viewport);resize();
 const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();const cp=Math.cos(pitch);camera.position.set(target.x+distance*Math.sin(yaw)*cp,target.y+distance*Math.sin(pitch),target.z+distance*Math.cos(yaw)*cp);camera.lookAt(target);if(lampGroup.userData.swing){lampGroup.rotation.z=Math.sin(t*8)*.22*lampGroup.userData.swing;lampGroup.userData.swing*=.965;if(lampGroup.userData.swing<.02){lampGroup.userData.swing=0;lampGroup.rotation.z=0}}if(bottle.userData.pulse){bottle.scale.y=1+Math.sin(t*15)*.12;bottle.rotation.y+=.08;bottle.userData.pulse*=.97;if(bottle.userData.pulse<.03){bottle.userData.pulse=0;bottle.scale.y=1}}crystal.rotation.y+=.006;crystal.material.emissiveIntensity=crystal.userData.on?2.8+Math.sin(t*3)*.5:1.1;if(pencil.userData.roll){pencil.rotation.z+=.18;pencil.position.x+=.025;if(pencil.position.x>2){pencil.userData.roll=0}}owlHead.rotation.y=Math.sin(t*.7)*.18;
+portraits.forEach((p,i)=>{
+  const m=p.userData.magic||0;if(!m)return;
+  if(p.userData.portraitKind==="chores"){p.rotation.z=Math.sin(t*16)*.065*m;p.position.y=p.userData.baseY+Math.abs(Math.sin(t*8))*.09*m;}
+  if(p.userData.portraitKind==="hogwarts"){p.position.z=p.userData.baseZ+Math.sin(t*7)*.16*m;p.rotation.y=Math.sin(t*5)*.12*m;}
+  if(p.userData.portraitKind==="chai"){p.position.x=p.userData.baseX+Math.sin(t*22)*.055*m;p.scale.y=1+Math.sin(t*11)*.035*m;}
+  p.userData.magic*=.975;
+  if(p.userData.magic<.02){p.userData.magic=0;p.position.set(p.userData.baseX,p.userData.baseY,p.userData.baseZ);p.rotation.set(0,0,0);p.scale.set(1,1,1);}
+});
 letters.forEach(l=>{if(l.userData.fly){l.position.y+=.018*l.userData.fly;l.rotation.z+=.045*l.userData.fly;l.userData.fly*=.975}});
 if(meetingClock.userData.spin){meetingClock.rotation.z+=.28*meetingClock.userData.spin;meetingClock.userData.spin*=.97}
 if(sealed.userData.shake){sealed.rotation.y=Math.sin(t*35)*.12*sealed.userData.shake;sealed.userData.shake*=.96}
