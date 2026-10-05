@@ -1,58 +1,51 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#050806" />
-  <title>CHAAAI // Dobby Online</title>
-  <meta name="description" content="Master Chai's unofficial system interface. Powered by Dobby." />
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f4f1e9">
+  <title>CHAAAI — Dobby's Workshop</title>
+  <meta name="description" content="A tiny interactive workshop for finding Master Chai.">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main class="shell">
-    <section class="terminal" aria-label="CHAAAI terminal">
-      <header class="terminal__bar">
-        <div class="brand"><span class="bot">◉</span><span>CHAAAI SYSTEM</span></div>
-        <div class="live"><span class="live__dot"></span>DOBBY ONLINE</div>
-      </header>
+  <main id="experience">
+    <header class="chrome">
+      <a class="brand" href="./">CHAAAI®</a>
+      <span>DOBBY'S WORKSHOP / 001</span>
+    </header>
 
-      <div id="screen" class="screen" aria-live="polite">
-        <div class="boot">
-          <p><span class="dim">[boot]</span> initializing dobby...</p>
-          <p><span class="dim">[ok]</span> master_chai interface loaded</p>
-          <p><span class="dim">[ok]</span> sarcasm module enabled</p>
-          <p><span class="dim">[ok]</span> workers.io uplink detected</p>
-        </div>
+    <section id="viewport" aria-label="Interactive 3D workshop">
+      <canvas id="scene"></canvas>
+      <div id="reticle" aria-hidden="true"></div>
+      <div id="tooltip" role="status"></div>
 
-        <div class="hero">
-          <pre class="dobby" aria-hidden="true">
-        .-.
-       (o o)
-       | O \
-        \   \
-         `~~~'
-      DOBBY_v1
-          </pre>
-          <h1>CHAAAI</h1>
-          <p class="subtitle">Master Chai's unofficial system interface.</p>
-          <button id="locateBtn" class="command-btn">&gt; ASK DOBBY WHERE CHAI IS</button>
-        </div>
-
-        <div id="conversation" class="conversation hidden"></div>
-
-        <form id="askForm" class="prompt hidden" autocomplete="off">
-          <label for="question"><span class="prompt__user">visitor@chaaai</span>:<span class="prompt__path">~</span>$</label>
-          <input id="question" maxlength="280" placeholder="ask Dobby something else..." />
-          <button type="submit" aria-label="Send">↵</button>
-        </form>
+      <div id="intro" class="overlay">
+        <p class="kicker">MASTER CHAI / STATUS</p>
+        <h1>WORKING.<br><em>OBVIOUSLY.</em></h1>
+        <p class="lede">Dobby knows where Master Chai is. The interesting question is what he is working on.</p>
+        <button id="enterBtn">ENTER DOBBY'S WORKSHOP <span>↗</span></button>
       </div>
 
-      <footer class="statusbar">
-        <span>SESSION <strong id="sessionState">ACTIVE</strong></span>
-        <span>QUERY BUDGET <strong id="budget">3</strong></span>
-      </footer>
+      <div id="dialogue" class="dialogue hidden" aria-live="polite">
+        <span>DOBBY</span><p id="dialogueText"></p>
+      </div>
+
+      <form id="askForm" class="ask hidden" autocomplete="off">
+        <div><span>DOBBY / 3 QUESTIONS</span><small id="budget">● ● ●</small></div>
+        <label for="question">ASK ABOUT MASTER CHAI</label>
+        <div class="inputRow">
+          <input id="question" maxlength="280" placeholder="Where is Chai?">
+          <button aria-label="Ask Dobby">↗</button>
+        </div>
+      </form>
+
+      <div class="instructions">
+        <span>DRAG TO LOOK</span><span>SCROLL TO MOVE</span><span>CLICK TO INVESTIGATE</span>
+      </div>
     </section>
   </main>
-  <script src="app.js"></script>
+  <script>window.CHAAAI_API_URL = window.CHAAAI_API_URL || "";</script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
