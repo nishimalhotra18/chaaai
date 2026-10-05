@@ -57,6 +57,23 @@ portrait(.1,4.7,1.15,1.55,"#244a49","#a5653e","THE FOUNDER");portrait(1.55,4.45,
 // parchment + quill
 const parchment=box(1.3,.025,.9,paper,-.55,2.08,1.0);addInteractive(parchment,"MASTER CHAI NOTES",()=>say("Dobby cannot read Master Chai's handwriting either."));
 const pencil=box(1.35,.045,.045,mat(0xe4a735,.55),.65,2.14,1.1);addInteractive(pencil,"ROLL THE PENCIL",()=>{pencil.userData.roll=1;say("Dobby was using that.");});
+// letters + extra interactive desk objects
+const letters=[];
+for(let i=0;i<4;i++){
+  const l=box(.72,.025,.46,paper,-3.05+i*.23,2.08,1.18+i*.08);
+  l.rotation.y=-.18+i*.07; letters.push(l);
+}
+addInteractive(letters[3],"MASTER CHAI LETTERS",()=>{
+  letters.forEach((l,i)=>l.userData.fly=.65+i*.08);
+  say("Four letters. Three meetings. One says urgent. Dobby dislikes that one.");
+});
+const meetingClock=mesh(new THREE.CylinderGeometry(.38,.38,.12,24),brass,1.65,2.32,.95);
+meetingClock.rotation.x=Math.PI/2;
+addInteractive(meetingClock,"MASTER CHAI MEETING CLOCK",()=>{meetingClock.userData.spin=1;say("Every hour is meeting o'clock. Dobby checked twice.");});
+const sealed=box(.82,.035,.55,red,-2.9,2.08,.55);
+addInteractive(sealed,"SEALED LETTER",()=>{sealed.userData.shake=1;say("That one says urgent. Dobby has decided not to deliver it yet.");});
+const blueprint=box(1.25,.025,.72,label("WORKERS.IO\\nSIMULATE - SHIP","#315f83","#e7dfc9"),2.75,2.09,-.55);
+addInteractive(blueprint,"WORKERS.IO BLUEPRINT",()=>{blueprint.userData.lift=1;say("Master Chai's blueprint. Dobby understands at least forty percent of the arrows.");});
 // three physical question stones
 const qstones=[];for(let i=0;i<3;i++){const q=mesh(new THREE.DodecahedronGeometry(.18,0),new THREE.MeshStandardMaterial({color:0x73e4d8,emissive:0x164c49,emissiveIntensity:1.5,roughness:.35}),-1.15+i*.5,2.18,-.55);qstones.push(q)}
 // ambient/detail lights
@@ -76,4 +93,9 @@ async function answer(q){const l=q.toLowerCase();if(/where|location|free|availab
 document.querySelector("#askForm").addEventListener("submit",async e=>{e.preventDefault();if(count>=MAX)return;const input=document.querySelector("#question"),q=input.value.trim();if(!q)return;input.value="";input.disabled=true;try{say("Dobby is thinking…",900);const a=await answer(q);count++;qstones[3-count].material.emissiveIntensity=.05;qstones[3-count].material.color.set(0x3c4b47);document.querySelector("#budget").textContent=["○ ○ ○","● ● ○","● ○ ○","○ ○ ○"][count];setTimeout(()=>say(a,4200),950);if(count===MAX)setTimeout(()=>{document.querySelector("#askForm").classList.add("hidden");say("Master Chai needs the compute back. Of course he does.",4500)},5600)}catch{say("Dobby lost the compute. Master Chai is probably using it.",3200)}finally{input.disabled=false;input.focus()}});
 // resize/render
 function resize(){const r=viewport.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix()}new ResizeObserver(resize).observe(viewport);resize();
-const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();const cp=Math.cos(pitch);camera.position.set(target.x+distance*Math.sin(yaw)*cp,target.y+distance*Math.sin(pitch),target.z+distance*Math.cos(yaw)*cp);camera.lookAt(target);if(lampGroup.userData.swing){lampGroup.rotation.z=Math.sin(t*8)*.22*lampGroup.userData.swing;lampGroup.userData.swing*=.965;if(lampGroup.userData.swing<.02){lampGroup.userData.swing=0;lampGroup.rotation.z=0}}if(bottle.userData.pulse){bottle.scale.y=1+Math.sin(t*15)*.12;bottle.rotation.y+=.08;bottle.userData.pulse*=.97;if(bottle.userData.pulse<.03){bottle.userData.pulse=0;bottle.scale.y=1}}crystal.rotation.y+=.006;crystal.material.emissiveIntensity=crystal.userData.on?2.8+Math.sin(t*3)*.5:1.1;if(pencil.userData.roll){pencil.rotation.z+=.18;pencil.position.x+=.025;if(pencil.position.x>2){pencil.userData.roll=0}}owlHead.rotation.y=Math.sin(t*.7)*.18;renderer.render(scene,camera)}animate();
+const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();const cp=Math.cos(pitch);camera.position.set(target.x+distance*Math.sin(yaw)*cp,target.y+distance*Math.sin(pitch),target.z+distance*Math.cos(yaw)*cp);camera.lookAt(target);if(lampGroup.userData.swing){lampGroup.rotation.z=Math.sin(t*8)*.22*lampGroup.userData.swing;lampGroup.userData.swing*=.965;if(lampGroup.userData.swing<.02){lampGroup.userData.swing=0;lampGroup.rotation.z=0}}if(bottle.userData.pulse){bottle.scale.y=1+Math.sin(t*15)*.12;bottle.rotation.y+=.08;bottle.userData.pulse*=.97;if(bottle.userData.pulse<.03){bottle.userData.pulse=0;bottle.scale.y=1}}crystal.rotation.y+=.006;crystal.material.emissiveIntensity=crystal.userData.on?2.8+Math.sin(t*3)*.5:1.1;if(pencil.userData.roll){pencil.rotation.z+=.18;pencil.position.x+=.025;if(pencil.position.x>2){pencil.userData.roll=0}}owlHead.rotation.y=Math.sin(t*.7)*.18;
+letters.forEach(l=>{if(l.userData.fly){l.position.y+=.018*l.userData.fly;l.rotation.z+=.045*l.userData.fly;l.userData.fly*=.975}});
+if(meetingClock.userData.spin){meetingClock.rotation.z+=.28*meetingClock.userData.spin;meetingClock.userData.spin*=.97}
+if(sealed.userData.shake){sealed.rotation.y=Math.sin(t*35)*.12*sealed.userData.shake;sealed.userData.shake*=.96}
+if(blueprint.userData.lift){blueprint.position.y=2.09+.12*Math.sin(t*10)*blueprint.userData.lift;blueprint.userData.lift*=.95}
+renderer.render(scene,camera)}animate();
