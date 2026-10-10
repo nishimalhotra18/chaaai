@@ -35,7 +35,7 @@ const monitor=box(2.25,1.45,.3,black,.55,2.75,-.05); addInteractive(monitor,"MAS
 });
 box(.18,.8,.18,black,.55,2.02,-.05);box(.85,.08,.55,black,.55,1.95,-.05);
 // warm hanging lamp
-const lampGroup=new THREE.Group();scene.add(lampGroup);lampGroup.position.set(3.45,5.8,.25);
+const lampGroup=new THREE.Group();scene.add(lampGroup);lampGroup.position.set(4.3,5.8,.25);
 const cord=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,1.1,8),black);cord.position.y=-.55;lampGroup.add(cord);
 const shade=new THREE.Mesh(new THREE.ConeGeometry(.55,.48,24,1,true),mat(0xd98b36,.45,.3));shade.position.y=-1.25;shade.rotation.x=Math.PI;lampGroup.add(shade);
 const bulb=new THREE.PointLight(0xffa94f,85,7,2);bulb.position.y=-1.48;lampGroup.add(bulb);addInteractive(shade,"SWING DOBBY'S LAMP",()=>{lampGroup.userData.swing=1;say("Dobby had that lamp positioned perfectly.");});
@@ -137,7 +137,7 @@ function makeWizard(kind){
     // Long silver beard, swept hair, half-moon glasses, pointed hat and a wand
     orb(head,.25,silverHair,0,.14,-.045,1.13,.88,1.06);
     [-.21,.21].forEach(x=>orb(head,.105,silverHair,x,-.18,-.015,.78,2.5,.65));
-    const beard=cyl(head,.025,.17,.42,silverHair,0,-.36,.15);
+    const beard=cyl(head,.17,.025,.42,silverHair,0,-.36,.15);
     for(const x of [-.10,.10])orb(head,.075,silverHair,x,-.25,.16,.74,1.9,.75);
     cyl(head,.15,.23,.41,robePurple,0,.42,-.01);
     cyl(head,.30,.30,.035,robePurple,0,.23,-.01);
