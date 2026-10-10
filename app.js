@@ -322,7 +322,7 @@ function installPortraitModel(p,index,asset,kind) {
       object.receiveShadow=true;
       if(object.material){
         for(const m of (Array.isArray(object.material)?object.material:[object.material])){
-          m.side=THREE.FrontSide;
+          // Preserve each imported glTF material's original side and transparency settings.
           if(m.map)m.map.colorSpace=THREE.SRGBColorSpace;
           m.needsUpdate=true;
         }
