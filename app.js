@@ -1,4 +1,5 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js";
 
 const API_URL=window.CHAAAI_API_URL||""; const MAX=3;
 const canvas=document.querySelector("#scene"), viewport=document.querySelector("#viewport");
@@ -198,7 +199,7 @@ function makeWizard(kind){
   return {actor,head,leftArm,rightArm};
 }
 function livingPortrait({x,y,w=1.48,h=1.96,name,quote,kind,top,bottom}){
-  const frame=new THREE.Group();frame.position.set(x,y,-3.005);scene.add(frame);
+  const frame=new THREE.Group();frame.position.set(x,y,-3.005);frame.userData.portraitWidth=w;scene.add(frame);
   // Deep recessed shadowbox with two inset gold molding layers and raised corner bosses.
   localBox(frame,w,h,.18,portraitShadow,0,0,-.10);
   const bg=localMesh(frame,new THREE.PlaneGeometry(w-.23,h-.24),
@@ -261,6 +262,108 @@ livingPortrait({x:-2.77,y:4.82,name:"Dumbledore",quote:"Help is given at Hogwart
 livingPortrait({x:-1.18,y:4.82,name:"Snape",quote:"There will be no foolish wand-waving or silly incantations in this class.",kind:"snape",top:"#1b292f",bottom:"#3d453f"});
 livingPortrait({x:.42,y:4.82,name:"Umbridge",quote:"I must not tell lies.",kind:"umbridge",top:"#704e5a",bottom:"#bd8e84"});
 livingPortrait({x:2.43,y:4.82,w:2.25,name:"Harry, Hermione & Ron",quote:"Mischief managed.",kind:"trio",top:"#263c4c",bottom:"#72634e"});
+
+// GLB portraits — actual textured 3D character assets. Keep the bespoke geometry visible
+// until each model has decoded and parsed, so a network hiccup never leaves a blank frame.
+const gltfLoader = new GLTFLoader();
+const portraitMixers = [];
+const portraitModels = {
+  dumbledore: "models/dumbledore.glb.b64",
+  harry: "models/harry.glb.b64",
+  hermione: "models/hermione.glb.b64",
+  ron: "models/ron.glb.b64"
+};
+const portraitAssets = new Map();
+async function loadPortraitAsset(kind) {
+  if (!portraitModels[kind]) return null;
+  if (!portraitAssets.has(kind)) {
+    portraitAssets.set(kind, (async () => {
+      const response = await fetch(portraitModels[kind], {cache:"force-cache"});
+      if (!response.ok) throw new Error("GLB asset fetch failed: "+kind+" / "+response.status);
+      const encoded = (await response.text()).replace(/\s+/g,"");
+      const decoded=atob(encoded), data=new Uint8Array(decoded.length);
+      for(let i=0;i<decoded.length;i++)data[i]=decoded.charCodeAt(i);
+      return await new Promise((resolve,reject)=>gltfLoader.parse(data.buffer,"",resolve,reject));
+    })());
+  }
+  return portraitAssets.get(kind);
+}
+function findBone(root,re) {
+  let found=null;
+  root.traverse(node=>{if(node.isBone&&re.test(node.name)&&!found)found=node;});
+  return found;
+}
+function installPortraitModel(p,index,asset,kind) {
+  const placeholder=p.characters[index];
+  if(!placeholder) return;
+  const container=new THREE.Group();
+  container.position.copy(placeholder.actor.position);
+  p.frame.add(container);
+  const root=asset.scene;
+  container.add(root);
+  root.updateMatrixWorld(true);
+  const bounds=new THREE.Box3().setFromObject(root);
+  const dimension=bounds.getSize(new THREE.Vector3());
+  const center=bounds.getCenter(new THREE.Vector3());
+  if(!Number.isFinite(dimension.y)||dimension.y<=.00001){
+    p.frame.remove(container);
+    throw new Error("Invalid 3D model geometry: "+kind);
+  }
+  // Fit the model to the original portrait, independently of the units in its GLB.
+  const isTrio=p.kind==="trio";
+  const desiredH=isTrio?.85:1.17, desiredW=isTrio?.58:p.frame.userData.portraitWidth-.35;
+  const scale=Math.min(desiredH/dimension.y,desiredW/Math.max(dimension.x,.0001));
+  root.scale.multiplyScalar(scale);
+  root.position.set(-center.x*scale,-center.y*scale,-center.z*scale+.21);
+  root.rotation.y+=0; // preserve the model artist's intended orientation
+  root.traverse(object=>{
+    if(object.isMesh){
+      object.castShadow=true;
+      object.receiveShadow=true;
+      if(object.material){
+        for(const m of (Array.isArray(object.material)?object.material:[object.material])){
+          m.side=THREE.FrontSide;
+          if(m.map)m.map.colorSpace=THREE.SRGBColorSpace;
+          m.needsUpdate=true;
+        }
+      }
+    }
+  });
+  p.frame.remove(placeholder.actor);
+  // Rigged characters have individual head and arm bones; static models are animated
+  // through the whole figure in a portrait-sized, intentionally subtle loop.
+  const head=findBone(root,/Head(_|$)|head\b/i);
+  const rightArm=findBone(root,/(upperarm.?r|rarm|rightarm|rhand)/i);
+  const eyelid=findBone(root,/(eyelid.*top|eyelid.*upper)/i);
+  const savedBoneRotations=[head,rightArm,eyelid].map(x=>x?x.rotation.clone():null);
+  p.characters[index]={
+    actor:container,model:root,head,rightArm,eyelid,
+    savedBoneRotations,kind,isDetailed:true
+  };
+  if(asset.animations?.length){
+    const mixer=new THREE.AnimationMixer(root);
+    asset.animations.forEach(clip=>mixer.clipAction(clip).play());
+    portraitMixers.push(mixer);
+  }
+  p.loaded=(p.loaded||0)+1;
+  console.info("[CHAAAI] Loaded real GLB portrait:",kind);
+}
+// Four existing CC-BY textured 3D character models: one wizard and the entire trio.
+// Snape and Umbridge remain as clearly marked handcrafted stand-ins until licensed
+// high-detail assets are supplied. Do not describe stand-ins as photoreal models.
+livingFrames.forEach(p=>{
+  if(p.kind==="dumbledore"){
+    loadPortraitAsset("dumbledore").then(asset=>installPortraitModel(p,0,asset,"dumbledore"))
+      .catch(err=>console.warn("[CHAAAI] Dumbledore GLB unavailable; keeping fallback",err));
+  }
+  if(p.kind==="trio"){
+    for(const [i,kind] of ["harry","hermione","ron"].entries()){
+      loadPortraitAsset(kind).then(asset=>installPortraitModel(p,i,asset,kind))
+        .catch(err=>console.warn("[CHAAAI] "+kind+" GLB unavailable; keeping fallback",err));
+    }
+  }
+});
+
 // parchment + quill
 const parchment=box(1.3,.025,.9,paper,-.55,2.08,1.0);addInteractive(parchment,"MASTER CHAI NOTES",()=>say("Dobby cannot read Master Chai's handwriting either."));
 const pencil=box(1.35,.045,.045,mat(0xe4a735,.55),.65,2.14,1.1);addInteractive(pencil,"ROLL THE PENCIL",()=>{pencil.userData.roll=1;say("Dobby was using that.");});
@@ -283,6 +386,14 @@ const blueprint=box(1.25,.025,.72,label("WORKERS.IO\\nSIMULATE - SHIP","#315f83"
 addInteractive(blueprint,"WORKERS.IO BLUEPRINT",()=>{blueprint.userData.lift=1;say("Master Chai's blueprint. Dobby understands at least forty percent of the arrows.");});
 // three physical question stones
 const qstones=[];for(let i=0;i<3;i++){const q=mesh(new THREE.DodecahedronGeometry(.18,0),new THREE.MeshStandardMaterial({color:0x73e4d8,emissive:0x164c49,emissiveIntensity:1.5,roughness:.35}),-1.15+i*.5,2.18,-.55);qstones.push(q)}
+// Museum-like portrait lighting: warm key from above and dim, cooler fill.
+const portraitKey=new THREE.SpotLight(0xffd49a,22,9,Math.PI/4,.65,1.5);
+portraitKey.position.set(-1.2,6.3,1.3);portraitKey.target.position.set(-.1,4.65,-2.9);
+scene.add(portraitKey,portraitKey.target);
+const portraitFill=new THREE.PointLight(0x9fb4aa,4.5,6,2);
+portraitFill.position.set(3.8,5.4,-1.1);
+scene.add(portraitFill);
+
 // ambient/detail lights
 scene.add(new THREE.HemisphereLight(0x7e9ca1,0x382414,1.45));const key=new THREE.DirectionalLight(0xffe0b5,2.1);key.position.set(-4,8,6);key.castShadow=true;key.shadow.mapSize.set(2048,2048);scene.add(key);
 const blueFill=new THREE.PointLight(0x2b77cf,24,8);blueFill.position.set(-5,3,2);scene.add(blueFill);
@@ -300,17 +411,31 @@ async function answer(q){const l=q.toLowerCase();if(/where|location|free|availab
 document.querySelector("#askForm").addEventListener("submit",async e=>{e.preventDefault();if(count>=MAX)return;const input=document.querySelector("#question"),q=input.value.trim();if(!q)return;input.value="";input.disabled=true;try{say("Dobby is thinking…",900);const a=await answer(q);count++;qstones[3-count].material.emissiveIntensity=.05;qstones[3-count].material.color.set(0x3c4b47);document.querySelector("#budget").textContent=["○ ○ ○","● ● ○","● ○ ○","○ ○ ○"][count];setTimeout(()=>say(a,4200),950);if(count===MAX)setTimeout(()=>{document.querySelector("#askForm").classList.add("hidden");say("Master Chai needs the compute back. Of course he does.",4500)},5600)}catch{say("Dobby lost the compute. Master Chai is probably using it.",3200)}finally{input.disabled=false;input.focus()}});
 // resize/render
 function resize(){const r=viewport.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix()}new ResizeObserver(resize).observe(viewport);resize();
-const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();const cp=Math.cos(pitch);camera.position.set(target.x+distance*Math.sin(yaw)*cp,target.y+distance*Math.sin(pitch),target.z+distance*Math.cos(yaw)*cp);camera.lookAt(target);if(lampGroup.userData.swing){lampGroup.rotation.z=Math.sin(t*8)*.22*lampGroup.userData.swing;lampGroup.userData.swing*=.965;if(lampGroup.userData.swing<.02){lampGroup.userData.swing=0;lampGroup.rotation.z=0}}if(bottle.userData.pulse){bottle.scale.y=1+Math.sin(t*15)*.12;bottle.rotation.y+=.08;bottle.userData.pulse*=.97;if(bottle.userData.pulse<.03){bottle.userData.pulse=0;bottle.scale.y=1}}crystal.rotation.y+=.006;crystal.material.emissiveIntensity=crystal.userData.on?2.8+Math.sin(t*3)*.5:1.1;if(pencil.userData.roll){pencil.rotation.z+=.18;pencil.position.x+=.025;if(pencil.position.x>2){pencil.userData.roll=0}}owlHead.rotation.y=Math.sin(t*.7)*.18;
+const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;portraitMixers.forEach(m=>m.update(dt));const cp=Math.cos(pitch);camera.position.set(target.x+distance*Math.sin(yaw)*cp,target.y+distance*Math.sin(pitch),target.z+distance*Math.cos(yaw)*cp);camera.lookAt(target);if(lampGroup.userData.swing){lampGroup.rotation.z=Math.sin(t*8)*.22*lampGroup.userData.swing;lampGroup.userData.swing*=.965;if(lampGroup.userData.swing<.02){lampGroup.userData.swing=0;lampGroup.rotation.z=0}}if(bottle.userData.pulse){bottle.scale.y=1+Math.sin(t*15)*.12;bottle.rotation.y+=.08;bottle.userData.pulse*=.97;if(bottle.userData.pulse<.03){bottle.userData.pulse=0;bottle.scale.y=1}}crystal.rotation.y+=.006;crystal.material.emissiveIntensity=crystal.userData.on?2.8+Math.sin(t*3)*.5:1.1;if(pencil.userData.roll){pencil.rotation.z+=.18;pencil.position.x+=.025;if(pencil.position.x>2){pencil.userData.roll=0}}owlHead.rotation.y=Math.sin(t*.7)*.18;
 livingFrames.forEach((p,i)=>{
   const time=t*.75+p.phase,boost=p.pulse;
   // Characters keep moving even before they are clicked, like Hogwarts portraits.
   p.characters.forEach((c,j)=>{
     const phase=time+j*1.7;
     c.actor.position.y=(p.kind==="trio"?.18:.14)+Math.sin(phase*1.18)*.025;
-    c.actor.rotation.y=Math.sin(phase*.72)*.075+(boost*Math.sin(t*7)*.10);
-    c.head.rotation.y=Math.sin(phase*.89)*.09;
-    c.head.rotation.z=Math.sin(phase*.67)*.035;
-    c.rightArm.rotation.z=(p.kind==="dumbledore"?.42:p.kind==="umbridge"?.28:p.kind==="trio"?-.25:p.kind==="snape"?.55:0)+Math.sin(phase*1.35)*.10+boost*Math.sin(t*10)*.20;
+    c.actor.rotation.y=Math.sin(phase*.72)*.085+(boost*Math.sin(t*7)*.10);
+    if(c.isDetailed) {
+      // Genuine rig motion where bones are present; preserve the artist's rest pose.
+      if(c.head){
+        c.head.rotation.y=c.savedBoneRotations[0].y+Math.sin(phase*.89)*.085;
+        c.head.rotation.z=c.savedBoneRotations[0].z+Math.sin(phase*.67)*.022;
+      }
+      if(c.rightArm) c.rightArm.rotation.z=c.savedBoneRotations[1].z+
+        Math.sin(phase*1.35)*.048+boost*Math.sin(t*9)*.12;
+      if(c.eyelid){
+        const blink=Math.pow(Math.max(0,Math.cos(phase*2.4)),38);
+        c.eyelid.rotation.x=c.savedBoneRotations[2].x+blink*.32;
+      }
+    } else {
+      c.head.rotation.y=Math.sin(phase*.89)*.09;
+      c.head.rotation.z=Math.sin(phase*.67)*.035;
+      c.rightArm.rotation.z=(p.kind==="dumbledore"?.42:p.kind==="umbridge"?.28:p.kind==="trio"?-.25:p.kind==="snape"?.55:0)+Math.sin(phase*1.35)*.10+boost*Math.sin(t*10)*.20;
+    }
   });
   if(p.frame.userData.spellbook){
     const book=p.frame.userData.spellbook;
