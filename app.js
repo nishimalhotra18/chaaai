@@ -1,4 +1,5 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
+import { installCozyWorkshop } from "./cozy-workshop.js";
 
 const API_URL=window.CHAAAI_API_URL||""; const MAX=3;
 const canvas=document.querySelector("#scene"), viewport=document.querySelector("#viewport");
@@ -323,13 +324,19 @@ const qstones=[];for(let i=0;i<3;i++){const q=mesh(new THREE.DodecahedronGeometr
 scene.add(new THREE.HemisphereLight(0x7e9ca1,0x382414,1.45));const key=new THREE.DirectionalLight(0xffe0b5,2.1);key.position.set(-4,8,6);key.castShadow=true;key.shadow.mapSize.set(2048,2048);scene.add(key);
 const blueFill=new THREE.PointLight(0x2b77cf,24,8);blueFill.position.set(-5,3,2);scene.add(blueFill);
 
+// Build the richly detailed 3D craft-workshop environment. The earlier portraits and
+// licensed Dumbledore photo remain as living frames on the new gallery wall.
+const cozyWorkshop=installCozyWorkshop({THREE,scene,renderer,interactives,livingFrames,addInteractive,say});
+camera.fov=53;camera.updateProjectionMatrix();
+yaw=0;pitch=.075;distance=10.35;target.set(0,3.22,-2.70);
+
 // interaction
 const tooltip=document.querySelector("#tooltip"),reticle=document.querySelector("#reticle");
 function pointer(e){const r=canvas.getBoundingClientRect();mouse.x=((e.clientX-r.left)/r.width)*2-1;mouse.y=-((e.clientY-r.top)/r.height)*2+1;reticle.style.left=(e.clientX-r.left)+"px";reticle.style.top=(e.clientY-r.top)+"px";}
-viewport.addEventListener("pointermove",e=>{pointer(e);if(drag){yaw-=(e.clientX-px)*.006;pitch=Math.max(-.08,Math.min(.48,pitch+(e.clientY-py)*.004));px=e.clientX;py=e.clientY;}ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects(interactives,false)[0];hovered=hit?.object||null;if(hovered){tooltip.style.display="block";tooltip.textContent=hovered.userData.name;tooltip.style.left=(e.offsetX+14)+"px";tooltip.style.top=(e.offsetY+14)+"px";reticle.style.opacity=1}else{tooltip.style.display="none";reticle.style.opacity=0}});
+viewport.addEventListener("pointermove",e=>{pointer(e);if(drag){yaw=Math.max(-.78,Math.min(.78,yaw-(e.clientX-px)*.0048));pitch=Math.max(-.08,Math.min(.38,pitch+(e.clientY-py)*.0038));px=e.clientX;py=e.clientY;}ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects(interactives,false)[0];hovered=hit?.object||null;if(hovered){tooltip.style.display="block";tooltip.textContent=hovered.userData.name;tooltip.style.left=(e.offsetX+14)+"px";tooltip.style.top=(e.offsetY+14)+"px";reticle.style.opacity=1}else{tooltip.style.display="none";reticle.style.opacity=0}});
 viewport.addEventListener("pointerdown",e=>{drag=true;px=e.clientX;py=e.clientY;viewport.classList.add("dragging")});addEventListener("pointerup",e=>{if(drag&&Math.abs(e.clientX-px)<5&&Math.abs(e.clientY-py)<5&&hovered)hovered.userData.action?.();drag=false;viewport.classList.remove("dragging")});
-viewport.addEventListener("wheel",e=>{e.preventDefault();distance=Math.max(7.2,Math.min(16,distance+e.deltaY*.008))},{passive:false});
-document.querySelector("#enterBtn").addEventListener("click",()=>{entered=true;document.querySelector("#intro").classList.add("gone");distance=9.4;target.set(.2,2.55,-.15);setTimeout(()=>{say("You are looking for Master Chai.");},700);setTimeout(()=>say("He is working. Obviously."),2600);setTimeout(()=>{say("You may ask Dobby three questions. Or touch things. Carefully.");document.querySelector("#askForm").classList.remove("hidden")},4600)});
+viewport.addEventListener("wheel",e=>{e.preventDefault();distance=Math.max(8.1,Math.min(12.0,distance+e.deltaY*.006))},{passive:false});
+document.querySelector("#enterBtn").addEventListener("click",()=>{entered=true;document.querySelector("#intro").classList.add("gone");distance=9.75;target.set(0,3.22,-2.70);setTimeout(()=>{say("You are looking for Master Chai.");},700);setTimeout(()=>say("He is working. Obviously."),2600);setTimeout(()=>{say("You may ask Dobby three questions. Or touch things. Carefully.");document.querySelector("#askForm").classList.remove("hidden")},4600)});
 
 function say(t,ms=2300){clearTimeout(dialogTimer);const d=document.querySelector("#dialogue");document.querySelector("#dialogueText").textContent=t;d.classList.remove("hidden");dialogTimer=setTimeout(()=>d.classList.add("hidden"),ms)}
 async function answer(q){const l=q.toLowerCase();if(/where|location|free|available/.test(l))return "Master Chai is working. Dobby can be more specific if you insist: probably Workers.io, a meeting, or both.";if(/sleep/.test(l))return "Dobby has seen the sleeping mat. Dobby has not seen Master Chai use it.";if(/build|worker/.test(l))return "Master Chai is building Workers.io. This explains the alarming amount of compute in Dobby's workshop.";if(!API_URL)return "Master Chai is working. Dobby's larger language model is currently borrowing the rest of the compute.";const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:q,history:[]})});if(!r.ok)throw Error();return (await r.json()).reply}
@@ -369,4 +376,4 @@ letters.forEach(l=>{if(l.userData.fly){l.position.y+=.018*l.userData.fly;l.rotat
 if(meetingClock.userData.spin){meetingClock.rotation.z+=.28*meetingClock.userData.spin;meetingClock.userData.spin*=.97}
 if(sealed.userData.shake){sealed.rotation.y=Math.sin(t*35)*.12*sealed.userData.shake;sealed.userData.shake*=.96}
 if(blueprint.userData.lift){blueprint.position.y=2.09+.12*Math.sin(t*10)*blueprint.userData.lift;blueprint.userData.lift*=.95}
-renderer.render(scene,camera)}animate();
+cozyWorkshop.update(t);renderer.render(scene,camera)}animate();
