@@ -223,7 +223,43 @@ function livingPortrait({x,y,w=1.48,h=1.96,name,quote,kind,top,bottom}){
     0,-h/2+.34,.48);
   plaque.renderOrder=2;
   const characters=[];
-  if(kind==="trio"){
+  let portraitPhoto=null;
+  if(kind==="dumbledore"){
+    // Actual Michael Gambon in Dumbledore costume (photograph by AaronTruss1989,
+    // CC BY-SA 4.0, Wikimedia Commons). This deliberately replaces the primitive
+    // geometric head/body with a photographic portrait; it is NOT a rigged 3D face.
+    // Source: https://commons.wikimedia.org/wiki/File:Michael_Gambon_on_the_set_of_Harry_Potter_and_the_Half_Blood_Prince.png
+    const placeholder=canvasTexture((g,W,H)=>{
+      const grad=g.createLinearGradient(0,0,W,H);
+      grad.addColorStop(0,"#283d49");grad.addColorStop(1,"#806345");
+      g.fillStyle=grad;g.fillRect(0,0,W,H);
+      g.fillStyle="#ebd3a4";g.textAlign="center";g.font="bold 33px Georgia,serif";
+      g.fillText("DUMBLEDORE",W/2,H*.52);
+    },512,640);
+    portraitPhoto=localMesh(frame,new THREE.PlaneGeometry(1.20,1.30),
+      new THREE.MeshBasicMaterial({map:placeholder,side:THREE.DoubleSide}),
+      0,.22,.095);
+    portraitPhoto.castShadow=false;portraitPhoto.receiveShadow=false;
+    portraitPhoto.userData.initialY=.22;
+    const photoURL="https://upload.wikimedia.org/wikipedia/commons/d/d1/Michael_Gambon_on_the_set_of_Harry_Potter_and_the_Half_Blood_Prince.png";
+    const loader=new THREE.TextureLoader();
+    loader.setCrossOrigin("anonymous");
+    loader.load(photoURL,texture=>{
+      texture.colorSpace=THREE.SRGBColorSpace;
+      // Crop the BTS surroundings, keep Gambon's full face, preserve aspect ratio.
+      texture.wrapS=THREE.ClampToEdgeWrapping;
+      texture.wrapT=THREE.ClampToEdgeWrapping;
+      texture.repeat.set(.97,.70);
+      texture.offset.set(.015,.29);
+      texture.anisotropy=Math.min(renderer.capabilities.getMaxAnisotropy(),8);
+      texture.needsUpdate=true;
+      portraitPhoto.material.map=texture;
+      portraitPhoto.material.needsUpdate=true;
+    },undefined,error=>{
+      console.warn("Could not load the credited Dumbledore photograph",error);
+      // The labelled fallback avoids an untextured or silently broken frame.
+    });
+  }else if(kind==="trio"){
     for(const [role,cx] of [["harry",-.67],["hermione",0],["ron",.67]]){
       const c=makeWizard(role);c.actor.scale.setScalar(.66);
       c.actor.position.set(cx,.18,.22);
@@ -247,7 +283,7 @@ function livingPortrait({x,y,w=1.48,h=1.96,name,quote,kind,top,bottom}){
     new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}),
     0,0,.69);
   hit.castShadow=false;hit.receiveShadow=false;
-  const entry={frame,characters,hit,lightDot,kind,phase:livingFrames.length*.9,pulse:0};
+  const entry={frame,characters,portraitPhoto,hit,lightDot,kind,phase:livingFrames.length*.9,pulse:0};
   livingFrames.push(entry);
   addInteractive(hit,name.toUpperCase()+" — LIVING PORTRAIT",()=>{
     entry.pulse=1;
@@ -312,6 +348,13 @@ livingFrames.forEach((p,i)=>{
     c.head.rotation.z=Math.sin(phase*.67)*.035;
     c.rightArm.rotation.z=(p.kind==="dumbledore"?.42:p.kind==="umbridge"?.28:p.kind==="trio"?-.25:p.kind==="snape"?.55:0)+Math.sin(phase*1.35)*.10+boost*Math.sin(t*10)*.20;
   });
+  // A subtle living-painting drift (not lip sync or facial animation).
+  if(p.portraitPhoto){
+    p.portraitPhoto.position.x=Math.sin(t*.53+p.phase)*.009;
+    p.portraitPhoto.position.y=p.portraitPhoto.userData.initialY+Math.sin(t*.79+p.phase)*.009;
+    p.portraitPhoto.rotation.y=Math.sin(t*.46+p.phase)*.015+p.pulse*.018;
+    p.portraitPhoto.scale.setScalar(1+Math.sin(t*.73)*.004+p.pulse*.015);
+  }
   if(p.frame.userData.spellbook){
     const book=p.frame.userData.spellbook;
     book.position.y=.61+Math.sin(t*1.4)*.055;
