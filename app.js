@@ -48,25 +48,219 @@ const crystal=mesh(new THREE.OctahedronGeometry(.42,0),new THREE.MeshStandardMat
 const tray=box(2.3,.13,1.35,blue,3.05,1.98,.78);addInteractive(tray,"DOBBY'S ARTIFACT TRAY",()=>say("Important artifacts. And three things Dobby found under Master Chai's desk."));
 for(let x=2.25;x<3.9;x+=.52)for(let z=.38;z<1.2;z+=.45){const s=mesh(new THREE.SphereGeometry(.12,10,8),mat((Math.round(x*10)+Math.round(z*10))%2?0xe09a3f:0xb84735,.5),x,2.13,z);}
 // owl perch: stylized original owl
-const perch=box(1.1,.1,.35,wood,-3.55,4.75,-2.1);const owlBody=mesh(new THREE.SphereGeometry(.38,18,14),mat(0x9b7651,.95),-3.55,5.3,-2.05);owlBody.scale.set(.8,1.25,.75);const owlHead=mesh(new THREE.SphereGeometry(.34,18,14),mat(0xb49168,.95),-3.55,5.72,-2.04);addInteractive(owlHead,"WORKSHOP OWL",()=>say("Letters for Master Chai. Mostly meeting invites. Tragic."));
+const perch=box(1.1,.1,.35,wood,-4.55,4.75,-2.1);const owlBody=mesh(new THREE.SphereGeometry(.38,18,14),mat(0x9b7651,.95),-4.55,5.3,-2.05);owlBody.scale.set(.8,1.25,.75);const owlHead=mesh(new THREE.SphereGeometry(.34,18,14),mat(0xb49168,.95),-4.55,5.72,-2.04);addInteractive(owlHead,"WORKSHOP OWL",()=>say("Letters for Master Chai. Mostly meeting invites. Tragic."));
 // to-do board
-const todo=box(1.7,2.05,.08,label("DOBBY / TO-DO\n01 HELP CHAI\n02 PROTECT COMPUTE\n03 FIND SOCKS\n04 MORE WORK",-1),-2.15,4.35,-3.15);addInteractive(todo,"DOBBY'S TO-DO LIST",()=>say("Item one is ongoing. Item four keeps reproducing."));
-// three magical portraits — each has its own character, motion and story
-const portraits=[];
-function portrait(x,y,w,h,c1,c2,title,kind,line){
-  const frame=box(w+.18,h+.18,.12,brass,x,y,-3.05);
-  const art=box(w,h,.07,new THREE.MeshStandardMaterial({map:canvasTexture((g,W,H)=>{
-    const gr=g.createLinearGradient(0,0,W,H);gr.addColorStop(0,c1);gr.addColorStop(1,c2);g.fillStyle=gr;g.fillRect(0,0,W,H);
-    g.fillStyle="rgba(18,20,18,.72)";g.beginPath();g.arc(W*.5,H*.38,H*.16,0,Math.PI*2);g.fill();g.fillRect(W*.37,H*.53,W*.26,H*.36);
-    g.fillStyle="rgba(245,220,165,.78)";g.font="700 22px serif";g.textAlign="center";g.fillText(title,W/2,H-18);
-  }),roughness:.72}),x,y,-2.97);
-  art.userData.portraitKind=kind; art.userData.baseX=x; art.userData.baseY=y; art.userData.baseZ=-2.97; portraits.push(art);
-  addInteractive(art,title,()=>{art.userData.magic=1; say(line,3600);});
-  return art;
+const todo=box(1.7,1.25,.08,label("DOBBY / TO-DO\n01 HELP CHAI\n02 PROTECT COMPUTE\n03 FIND SOCKS\n04 MORE WORK"),-2.7,2.95,-3.15);addInteractive(todo,"DOBBY'S TO-DO LIST",()=>say("Item one is ongoing. Item four keeps reproducing."));
+// Living portraits: miniature three-dimensional Hogwarts dioramas rather than flat textures.
+// All figures, frames, captions and effects are authored in Three.js; no external model files.
+const livingFrames=[];
+const portraitGold=mat(0xb88a42,.31,.75), portraitGoldLight=mat(0xf4d591,.28,.62);
+const portraitShadow=mat(0x271b19,.94), ivory=mat(0xf0dbc0,.95);
+const robePurple=mat(0x4e456e,.86), robeBlack=mat(0x181b22,.89);
+const pinkRobe=mat(0xc87e9b,.83), skin=mat(0xe5baa0,.93);
+const hairBlack=mat(0x211d21,.93), hairBrown=mat(0x70472c,.95), ginger=mat(0xb76635,.92);
+const silverHair=mat(0xdfded3,.9), blush=mat(0xa65a69,.91);
+const goldInk=mat(0xcda362,.44,.42);
+function localMesh(parent,geometry,material,x=0,y=0,z=0){
+  const obj=new THREE.Mesh(geometry,material);obj.position.set(x,y,z);
+  obj.castShadow=true;obj.receiveShadow=true;parent.add(obj);return obj;
 }
-portrait(.1,4.7,1.15,1.55,"#31574e","#b87943","THE HOUSEKEEPER","chores","Dobby, your socks are still on the stairs. And the owl has not been fed. Master Chai working is not an excuse.");
-portrait(1.55,4.45,.95,1.25,"#59344f","#c49a58","THE PROFESSOR","hogwarts","A message from Hogwarts: Dobby is reminded that wandering corridors after curfew remains frowned upon.");
-portrait(2.72,4.8,.8,1.05,"#29436b","#769478","NIGHT SHIFT","chai","Master Chai status report: still working. Meeting count: unreasonable. Probability of stopping soon: extremely low.");
+function localBox(parent,w,h,d,m,x,y,z){return localMesh(parent,new THREE.BoxGeometry(w,h,d),m,x,y,z)}
+function orb(parent,r,m,x,y,z,sx=1,sy=1,sz=1){
+  const o=localMesh(parent,new THREE.SphereGeometry(r,18,14),m,x,y,z);
+  o.scale.set(sx,sy,sz);return o;
+}
+function cyl(parent,r1,r2,h,m,x,y,z){
+  return localMesh(parent,new THREE.CylinderGeometry(r1,r2,h,14),m,x,y,z);
+}
+function backdropTexture(top,bottom){
+  return canvasTexture((g,W,H)=>{
+    const grad=g.createLinearGradient(0,0,W,H);
+    grad.addColorStop(0,top);grad.addColorStop(1,bottom);g.fillStyle=grad;g.fillRect(0,0,W,H);
+    g.strokeStyle="rgba(247,208,135,.32)";g.lineWidth=9;
+    g.beginPath();g.moveTo(W*.12,H);g.lineTo(W*.12,H*.25);
+    g.quadraticCurveTo(W*.12,H*.07,W*.5,H*.06);
+    g.quadraticCurveTo(W*.88,H*.07,W*.88,H*.25);
+    g.lineTo(W*.88,H);g.stroke();
+    g.lineWidth=2;g.strokeStyle="rgba(250,220,170,.14)";
+    for(let i=0;i<16;i++){const x=(i*139+47)%W,y=(i*97+51)%H;g.beginPath();g.arc(x,y,2+(i%3),0,Math.PI*2);g.stroke();}
+  },512,640);
+}
+function inscriptionTexture(name,quote){
+  return canvasTexture((g,W,H)=>{
+    g.fillStyle="#201a16";g.fillRect(0,0,W,H);
+    g.strokeStyle="#c39a5c";g.lineWidth=10;g.strokeRect(7,7,W-14,H-14);
+    g.fillStyle="#f1ce8f";g.textAlign="center";g.font="bold 48px Georgia, serif";
+    g.fillText(name.toUpperCase(),W/2,61);
+    g.fillStyle="#efe3c7";g.font="italic 35px Georgia, serif";
+    const words=quote.split(" "),lines=[];let line="";
+    words.forEach(word=>{
+      const candidate=line?line+" "+word:word;
+      if(g.measureText(candidate).width>W-75&&line){lines.push(line);line=word;}
+      else line=candidate;
+    });if(line)lines.push(line);
+    const lineHeight=42,firstY=125;
+    lines.forEach((l,i)=>g.fillText(l,W/2,firstY+i*lineHeight));
+  },768,330);
+}
+// Each person is built from real geometric volumes. Their bodies, hair, props and faces
+// have parallax when the viewer moves the orbit camera.
+function makeWizard(kind){
+  const actor=new THREE.Group();
+  const isD=kind==="dumbledore",isS=kind==="snape",isU=kind==="umbridge";
+  const isH=kind==="harry",isM=kind==="hermione",isR=kind==="ron";
+  const clothing=isD?robePurple:isU?pinkRobe:robeBlack;
+  // tapered robe, shoulders, face, neck and deliberately oversized hands
+  cyl(actor,.22,.35,.70,clothing,0,-.12,.16);
+  orb(actor,.32,clothing,0,.10,.17,1.16,.53,.73);
+  cyl(actor,.07,.07,.13,skin,0,.26,.22);
+  const head=new THREE.Group();head.position.set(0,.46,.24);actor.add(head);
+  orb(head,.23,skin,0,0,0,1,.99,.87);
+  orb(head,.045,skin,0,-.055,.20,.8,1.25,.95); // nose
+  const eyeMat=mat(0x24201c,.65);
+  [-.089,.089].forEach(x=>{
+    orb(head,.019,eyeMat,x,.022,.19);
+    const brow=localBox(head,.085,.015,.018,isU?hairBrown:hairBlack,x,.093,.193);
+    brow.rotation.z=isS?(x<0?-.18:.18):0;
+  });
+  const mouth=localBox(head,.095,.011,.012,isU?blush:hairBrown,0,-.122,.193);
+  mouth.rotation.z=isU?.04:0;
+  // sleeves extend from the torso, with independently animatable arms
+  const leftArm=new THREE.Group(),rightArm=new THREE.Group();
+  leftArm.position.set(-.29,.11,.13);rightArm.position.set(.29,.11,.13);
+  actor.add(leftArm,rightArm);
+  const sleeveL=cyl(leftArm,.11,.15,.44,clothing,-.035,-.21,.02);
+  const sleeveR=cyl(rightArm,.11,.15,.44,clothing,.035,-.21,.02);
+  orb(leftArm,.075,skin,-.04,-.45,.04);
+  orb(rightArm,.075,skin,.04,-.45,.04);
+  if(isD){
+    // Long silver beard, swept hair, half-moon glasses, pointed hat and a wand
+    orb(head,.25,silverHair,0,.14,-.045,1.13,.88,1.06);
+    [-.21,.21].forEach(x=>orb(head,.105,silverHair,x,-.18,-.015,.78,2.5,.65));
+    const beard=cyl(head,.025,.17,.42,silverHair,0,-.36,.15);
+    for(const x of [-.10,.10])orb(head,.075,silverHair,x,-.25,.16,.74,1.9,.75);
+    cyl(head,.15,.23,.41,robePurple,0,.42,-.01);
+    cyl(head,.30,.30,.035,robePurple,0,.23,-.01);
+    const spectacles=mat(0xe1ca87,.25,.65);
+    [-.094,.094].forEach(x=>{
+      const rim=localMesh(head,new THREE.TorusGeometry(.083,.012,6,18),spectacles,x,.025,.207);
+    });
+    localBox(head,.045,.012,.012,spectacles,0,.025,.21);
+    rightArm.rotation.z=.42;
+    const wand=cyl(rightArm,.013,.024,.60,goldInk,.10,-.71,.12);wand.rotation.z=.25;
+  }else if(isS){
+    // Severe hooked silhouette, center-parted long dark hair and high collar
+    orb(head,.245,hairBlack,0,.15,-.06,1.08,.9,1.0);
+    [-.20,.20].forEach(x=>orb(head,.115,hairBlack,x,-.20,-.04,.8,2.65,.9));
+    localBox(actor,.16,.42,.12,robeBlack,-.28,.17,.18);
+    localBox(actor,.16,.42,.12,robeBlack,.28,.17,.18);
+    orb(head,.045,skin,0,-.07,.22,.73,1.6,.75);
+    leftArm.rotation.z=-.55;rightArm.rotation.z=.55;
+  }else if(isU){
+    // Rose-pink jacket, tidy curls, matching hat, pearl collar and little teacup
+    const curlMat=mat(0x94735c,.91);
+    for(let i=0;i<9;i++){const a=(i/9)*Math.PI*2;orb(head,.085,curlMat,Math.cos(a)*.205,.18+Math.sin(a)*.115,-.02);}
+    cyl(head,.11,.19,.15,pinkRobe,0,.30,-.02);
+    cyl(head,.27,.27,.035,pinkRobe,0,.235,-.02);
+    orb(head,.075,blush,.13,.38,.01);
+    for(let i=-1;i<=1;i++)orb(actor,.026,ivory,i*.11,.17,.40);
+    const cup=localBox(rightArm,.18,.13,.13,ivory,.08,-.37,.20);
+    orb(rightArm,.05,goldInk,.20,-.36,.2,.5,.9,.5);
+    rightArm.rotation.z=.28;
+  }else{
+    // Trio: recognizable individual silhouettes with glasses, hair, scarves and props.
+    const isGirl=isM;
+    if(isH){
+      orb(head,.25,hairBlack,0,.17,-.06,1.12,.83,1);
+      for(let i=0;i<4;i++)orb(head,.095,hairBlack,-.16+i*.1,.29,.04,.8,1.3,.7);
+      const glass=mat(0x392e2c,.4,.45);
+      [-.09,.09].forEach(x=>localMesh(head,new THREE.TorusGeometry(.08,.013,5,14),glass,x,.02,.21));
+      localBox(head,.055,.012,.015,glass,0,.02,.21);
+      const scar=localBox(head,.065,.013,.01,blush,-.09,.14,.212);scar.rotation.z=-.52;
+    }else if(isM){
+      orb(head,.31,hairBrown,0,.04,-.075,1.16,1.13,.95);
+      for(let i=0;i<7;i++)orb(head,.09,hairBrown,-.23+i*.075,.18+(i%2)*.055,.06);
+    }else if(isR){
+      orb(head,.245,ginger,0,.17,-.06,1.14,.8,1.0);
+      orb(head,.095,ginger,-.15,.28,.04);orb(head,.08,ginger,.12,.29,.04);
+    }
+    const scarf=isH?mat(0x9f3e39,.7):isM?mat(0xa94c42,.7):mat(0xb78b37,.7);
+    cyl(actor,.20,.22,.10,scarf,0,.18,.22);
+    if(isM){
+      const book=localBox(leftArm,.29,.32,.075,mat(0x786446,.7),-.10,-.37,.22);
+      book.rotation.z=.22;
+      leftArm.rotation.z=-.23;
+    }else{
+      const wand=cyl(rightArm,.012,.019,.54,goldInk,.07,-.65,.18);
+      wand.rotation.z=.15;rightArm.rotation.z=-.25;
+    }
+  }
+  return {actor,head,leftArm,rightArm};
+}
+function livingPortrait({x,y,w=1.48,h=1.96,name,quote,kind,top,bottom}){
+  const frame=new THREE.Group();frame.position.set(x,y,-3.005);scene.add(frame);
+  // Deep recessed shadowbox with two inset gold molding layers and raised corner bosses.
+  localBox(frame,w,h,.18,portraitShadow,0,0,-.10);
+  const bg=localMesh(frame,new THREE.PlaneGeometry(w-.23,h-.24),
+    new THREE.MeshBasicMaterial({map:backdropTexture(top,bottom)}),0,0,.008);
+  const lip=.095,edge=.035;
+  for(const [bw,bh,bx,by] of [
+    [w,lip,0,h/2-lip/2],[w,lip,0,-h/2+lip/2],
+    [lip,h, -w/2+lip/2,0],[lip,h,w/2-lip/2,0]
+  ]){
+    localBox(frame,bw,bh,.17,portraitGold,bx,by,.13);
+  }
+  for(const [bw,bh,bx,by] of [
+    [w-.13,edge,0,h/2-.105],[w-.13,edge,0,-h/2+.105],
+    [edge,h-.13,-w/2+.105,0],[edge,h-.13,w/2-.105,0]
+  ])localBox(frame,bw,bh,.09,portraitGoldLight,bx,by,.22);
+  for(const sx of [-1,1])for(const sy of [-1,1]){
+    orb(frame,.055,portraitGoldLight,sx*(w/2-.065),sy*(h/2-.065),.245);
+  }
+  // Readable diegetic label and quote, etched on a separate panel inside the frame.
+  const plaque=localMesh(frame,new THREE.PlaneGeometry(w-.20,.48),
+    new THREE.MeshBasicMaterial({map:inscriptionTexture(name,quote),side:THREE.DoubleSide}),
+    0,-h/2+.34,.48);
+  plaque.renderOrder=2;
+  const characters=[];
+  if(kind==="trio"){
+    for(const [role,cx] of [["harry",-.67],["hermione",0],["ron",.67]]){
+      const c=makeWizard(role);c.actor.scale.setScalar(.66);
+      c.actor.position.set(cx,.18,.22);
+      frame.add(c.actor);characters.push(c);
+    }
+    // Shared floating spellbook that moves independently of the trio.
+    const spellbook=new THREE.Group();frame.add(spellbook);
+    spellbook.position.set(0,.62,.36);
+    const cover=localBox(spellbook,.26,.30,.06,mat(0x926a40,.6),0,0,0);
+    localBox(spellbook,.20,.24,.065,paper,.005,0,.02);
+    frame.userData.spellbook=spellbook;
+  }else{
+    const c=makeWizard(kind);c.actor.position.set(0,.14,.15);
+    frame.add(c.actor);characters.push(c);
+  }
+  const lightDot=localMesh(frame,new THREE.SphereGeometry(.048,12,10),
+    new THREE.MeshStandardMaterial({color:0xf2cc8e,emissive:0xa56e2e,emissiveIntensity:1.8}),
+    w/2-.18,h/2-.21,.31);
+  // Unobtrusive clickable hit surface in front of all 3D characters.
+  const hit=localMesh(frame,new THREE.PlaneGeometry(w-.09,h-.08),
+    new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}),
+    0,0,.69);
+  hit.castShadow=false;hit.receiveShadow=false;
+  const entry={frame,characters,hit,lightDot,kind,phase:livingFrames.length*.9,pulse:0};
+  livingFrames.push(entry);
+  addInteractive(hit,name.toUpperCase()+" — LIVING PORTRAIT",()=>{
+    entry.pulse=1;
+    if(kind==="trio"){
+      say("Harry, Hermione and Ron are attempting a spell. Dobby suggests standing back.",4600);
+    }else say(name+": “"+quote+"”",5200);
+  });
+}
+// Four fully dimensional living portraits, spaced so each reads clearly at room scale.
+livingPortrait({x:-2.77,y:4.82,name:"Dumbledore",quote:"Help is given at Hogwarts for those who ask for it.",kind:"dumbledore",top:"#253c56",bottom:"#705d45"});
+livingPortrait({x:-1.18,y:4.82,name:"Snape",quote:"There will be no foolish wand-waving or silly incantations in this class.",kind:"snape",top:"#1b292f",bottom:"#3d453f"});
+livingPortrait({x:.42,y:4.82,name:"Umbridge",quote:"I must not tell lies.",kind:"umbridge",top:"#704e5a",bottom:"#bd8e84"});
+livingPortrait({x:2.43,y:4.82,w:2.25,name:"Harry, Hermione & Ron",quote:"Mischief managed.",kind:"trio",top:"#263c4c",bottom:"#72634e"});
 // parchment + quill
 const parchment=box(1.3,.025,.9,paper,-.55,2.08,1.0);addInteractive(parchment,"MASTER CHAI NOTES",()=>say("Dobby cannot read Master Chai's handwriting either."));
 const pencil=box(1.35,.045,.045,mat(0xe4a735,.55),.65,2.14,1.1);addInteractive(pencil,"ROLL THE PENCIL",()=>{pencil.userData.roll=1;say("Dobby was using that.");});
@@ -107,13 +301,26 @@ document.querySelector("#askForm").addEventListener("submit",async e=>{e.prevent
 // resize/render
 function resize(){const r=viewport.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix()}new ResizeObserver(resize).observe(viewport);resize();
 const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();const cp=Math.cos(pitch);camera.position.set(target.x+distance*Math.sin(yaw)*cp,target.y+distance*Math.sin(pitch),target.z+distance*Math.cos(yaw)*cp);camera.lookAt(target);if(lampGroup.userData.swing){lampGroup.rotation.z=Math.sin(t*8)*.22*lampGroup.userData.swing;lampGroup.userData.swing*=.965;if(lampGroup.userData.swing<.02){lampGroup.userData.swing=0;lampGroup.rotation.z=0}}if(bottle.userData.pulse){bottle.scale.y=1+Math.sin(t*15)*.12;bottle.rotation.y+=.08;bottle.userData.pulse*=.97;if(bottle.userData.pulse<.03){bottle.userData.pulse=0;bottle.scale.y=1}}crystal.rotation.y+=.006;crystal.material.emissiveIntensity=crystal.userData.on?2.8+Math.sin(t*3)*.5:1.1;if(pencil.userData.roll){pencil.rotation.z+=.18;pencil.position.x+=.025;if(pencil.position.x>2){pencil.userData.roll=0}}owlHead.rotation.y=Math.sin(t*.7)*.18;
-portraits.forEach((p,i)=>{
-  const m=p.userData.magic||0;if(!m)return;
-  if(p.userData.portraitKind==="chores"){p.rotation.z=Math.sin(t*16)*.065*m;p.position.y=p.userData.baseY+Math.abs(Math.sin(t*8))*.09*m;}
-  if(p.userData.portraitKind==="hogwarts"){p.position.z=p.userData.baseZ+Math.sin(t*7)*.16*m;p.rotation.y=Math.sin(t*5)*.12*m;}
-  if(p.userData.portraitKind==="chai"){p.position.x=p.userData.baseX+Math.sin(t*22)*.055*m;p.scale.y=1+Math.sin(t*11)*.035*m;}
-  p.userData.magic*=.975;
-  if(p.userData.magic<.02){p.userData.magic=0;p.position.set(p.userData.baseX,p.userData.baseY,p.userData.baseZ);p.rotation.set(0,0,0);p.scale.set(1,1,1);}
+livingFrames.forEach((p,i)=>{
+  const time=t*.75+p.phase,boost=p.pulse;
+  // Characters keep moving even before they are clicked, like Hogwarts portraits.
+  p.characters.forEach((c,j)=>{
+    const phase=time+j*1.7;
+    c.actor.position.y=(p.kind==="trio"?.18:.14)+Math.sin(phase*1.18)*.025;
+    c.actor.rotation.y=Math.sin(phase*.72)*.075+(boost*Math.sin(t*7)*.10);
+    c.head.rotation.y=Math.sin(phase*.89)*.09;
+    c.head.rotation.z=Math.sin(phase*.67)*.035;
+    c.rightArm.rotation.z=(p.kind==="dumbledore"?.42:p.kind==="umbridge"?.28:p.kind==="trio"?-.25:p.kind==="snape"?.55:0)+Math.sin(phase*1.35)*.10+boost*Math.sin(t*10)*.20;
+  });
+  if(p.frame.userData.spellbook){
+    const book=p.frame.userData.spellbook;
+    book.position.y=.61+Math.sin(t*1.4)*.055;
+    book.rotation.y=Math.sin(t*.65)*.25;
+    book.rotation.z=Math.sin(t*1.05)*.12;
+  }
+  p.lightDot.material.emissiveIntensity=1.4+Math.sin(time*2.2)*.42+boost*2;
+  p.frame.scale.setScalar(1+boost*.013);
+  p.pulse*=.962;
 });
 letters.forEach(l=>{if(l.userData.fly){l.position.y+=.018*l.userData.fly;l.rotation.z+=.045*l.userData.fly;l.userData.fly*=.975}});
 if(meetingClock.userData.spin){meetingClock.rotation.z+=.28*meetingClock.userData.spin;meetingClock.userData.spin*=.97}
