@@ -330,20 +330,124 @@ const cozyWorkshop=installCozyWorkshop({THREE,scene,renderer,interactives,living
 camera.fov=47;camera.updateProjectionMatrix();
 yaw=0;pitch=.17;distance=10.35;target.set(0,2.52,-2.70);
 
-// interaction
+// Interaction: four cinematic camera viewpoints plus drag-to-explore.
 const tooltip=document.querySelector("#tooltip"),reticle=document.querySelector("#reticle");
-function pointer(e){const r=canvas.getBoundingClientRect();mouse.x=((e.clientX-r.left)/r.width)*2-1;mouse.y=-((e.clientY-r.top)/r.height)*2+1;reticle.style.left=(e.clientX-r.left)+"px";reticle.style.top=(e.clientY-r.top)+"px";}
-viewport.addEventListener("pointermove",e=>{pointer(e);if(drag){yaw=Math.max(-.78,Math.min(.78,yaw-(e.clientX-px)*.0048));pitch=Math.max(-.08,Math.min(.38,pitch+(e.clientY-py)*.0038));px=e.clientX;py=e.clientY;}ray.setFromCamera(mouse,camera);const hit=ray.intersectObjects(interactives,false)[0];hovered=hit?.object||null;if(hovered){tooltip.style.display="block";tooltip.textContent=hovered.userData.name;tooltip.style.left=(e.offsetX+14)+"px";tooltip.style.top=(e.offsetY+14)+"px";reticle.style.opacity=1}else{tooltip.style.display="none";reticle.style.opacity=0}});
-viewport.addEventListener("pointerdown",e=>{drag=true;px=e.clientX;py=e.clientY;viewport.classList.add("dragging")});addEventListener("pointerup",e=>{if(drag&&Math.abs(e.clientX-px)<5&&Math.abs(e.clientY-py)<5&&hovered)hovered.userData.action?.();drag=false;viewport.classList.remove("dragging")});
-viewport.addEventListener("wheel",e=>{e.preventDefault();distance=Math.max(8.1,Math.min(12.0,distance+e.deltaY*.006))},{passive:false});
-document.querySelector("#enterBtn").addEventListener("click",()=>{entered=true;document.querySelector("#intro").classList.add("gone");distance=9.75;target.set(0,2.52,-2.70);setTimeout(()=>{say("You are looking for Master Chai.");},700);setTimeout(()=>say("He is working. Obviously."),2600);setTimeout(()=>{say("You may ask Dobby three questions. Or touch things. Carefully.");document.querySelector("#askForm").classList.remove("hidden")},4600)});
+const presets={
+  front:{yaw:0,pitch:.17,distance:10.35,focus:[0,2.52,-2.70]},
+  left:{yaw:-.60,pitch:.19,distance:10.70,focus:[-.65,2.57,-2.55]},
+  desk:{yaw:.03,pitch:.34,distance:9.20,focus:[0,1.95,-2.46]},
+  right:{yaw:.62,pitch:.19,distance:10.65,focus:[.60,2.53,-2.54]}
+};
+let cameraTransition=null,pressX=0,pressY=0,dragMoved=false;
+const viewButtons=[...document.querySelectorAll("[data-scene-view]")];
+function selectView(name){
+ const pose=presets[name];if(!pose)return;
+ cameraTransition=pose;
+ viewButtons.forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.sceneView===name)));
+}
+viewButtons.forEach(b=>b.addEventListener("click",()=>selectView(b.dataset.sceneView)));
+function pointer(e){
+ const rect=canvas.getBoundingClientRect();
+ mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
+ mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
+ reticle.style.left=(e.clientX-rect.left)+"px";
+ reticle.style.top=(e.clientY-rect.top)+"px";
+ return rect;
+}
+viewport.addEventListener("pointermove",e=>{
+ const rect=pointer(e);
+ if(drag){
+   if(Math.hypot(e.clientX-pressX,e.clientY-pressY)>5)dragMoved=true;
+   yaw=Math.max(-1.04,Math.min(1.04,yaw-(e.clientX-px)*.0048));
+   pitch=Math.max(-.09,Math.min(.49,pitch+(e.clientY-py)*.0038));
+   px=e.clientX;py=e.clientY;
+ }
+ ray.setFromCamera(mouse,camera);
+ const hit=ray.intersectObjects(interactives,false)[0];hovered=hit?.object||null;
+ if(hovered && !drag){
+   tooltip.style.display="block";tooltip.textContent=hovered.userData.name;
+   tooltip.style.left=(e.clientX-rect.left+14)+"px";
+   tooltip.style.top=(e.clientY-rect.top+14)+"px";
+   reticle.style.opacity=1;
+ }else{
+   tooltip.style.display="none";reticle.style.opacity=0;
+ }
+});
+viewport.addEventListener("pointerdown",e=>{
+ if(e.target.closest("button,input,form,.ask,.camera-nav"))return;
+ if(e.button!==0)return;
+ cameraTransition=null;
+ viewButtons.forEach(b=>b.setAttribute("aria-pressed","false"));
+ drag=true;dragMoved=false;pressX=px=e.clientX;pressY=py=e.clientY;
+ viewport.classList.add("dragging");
+});
+window.addEventListener("pointerup",()=>{
+ if(drag&&!dragMoved&&hovered)hovered.userData.action?.();
+ drag=false;viewport.classList.remove("dragging");
+});
+viewport.addEventListener("pointerleave",()=>{
+ tooltip.style.display="none";reticle.style.opacity=0;
+});
+viewport.addEventListener("wheel",e=>{
+ e.preventDefault();cameraTransition=null;
+ distance=Math.max(7.9,Math.min(12.9,distance+e.deltaY*.006));
+},{passive:false});
+const intro=document.querySelector("#intro"),askForm=document.querySelector("#askForm");
+document.querySelector("#enterBtn").addEventListener("click",()=>{
+ entered=true;intro.classList.add("gone");askForm.classList.remove("hidden");
+ say("Dobby is at your service. You may ask three questions about Master Chai.",3700);
+});
+document.querySelector("#dobbyToggle").addEventListener("click",()=>{
+ if(count>=MAX){say("Dobby has used his three questions. Master Chai needs the compute back.",3600);return;}
+ if(!entered){document.querySelector("#enterBtn").click();return;}
+ askForm.classList.toggle("hidden");
+ if(!askForm.classList.contains("hidden"))document.querySelector("#question").focus();
+});
+window.addEventListener("keydown",e=>{
+ if(e.key==="Escape")askForm.classList.add("hidden");
+ if(e.target.matches("input,textarea"))return;
+ if(e.key==="ArrowLeft")selectView("left");
+ if(e.key==="ArrowRight")selectView("right");
+ if(e.key==="Home")selectView("front");
+});
+// Subtle opt-in ambient hum: silent by default, with a real functional toggle.
+let ambientContext=null,ambientGain=null,ambientOn=false;
+const soundButton=document.querySelector("#soundToggle");
+soundButton.addEventListener("click",async()=>{
+ try{
+   if(!ambientContext){
+     const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+     if(!AudioContextClass){soundButton.textContent="SOUND UNAVAILABLE";return;}
+     ambientContext=new AudioContextClass();
+     const hum=ambientContext.createOscillator();
+     hum.type="sine";hum.frequency.value=84;
+     ambientGain=ambientContext.createGain();ambientGain.gain.value=0;
+     hum.connect(ambientGain).connect(ambientContext.destination);hum.start();
+   }
+   await ambientContext.resume();
+   ambientOn=!ambientOn;
+   ambientGain.gain.setTargetAtTime(ambientOn?.007:0,ambientContext.currentTime,.16);
+   soundButton.textContent=ambientOn?"◖ SOUND ON":"◖ SOUND OFF";
+   soundButton.setAttribute("aria-pressed",String(ambientOn));
+ }catch{
+   soundButton.textContent="SOUND UNAVAILABLE";
+ }
+});
 
 function say(t,ms=2300){clearTimeout(dialogTimer);const d=document.querySelector("#dialogue");document.querySelector("#dialogueText").textContent=t;d.classList.remove("hidden");dialogTimer=setTimeout(()=>d.classList.add("hidden"),ms)}
 async function answer(q){const l=q.toLowerCase();if(/where|location|free|available/.test(l))return "Master Chai is working. Dobby can be more specific if you insist: probably Workers.io, a meeting, or both.";if(/sleep/.test(l))return "Dobby has seen the sleeping mat. Dobby has not seen Master Chai use it.";if(/build|worker/.test(l))return "Master Chai is building Workers.io. This explains the alarming amount of compute in Dobby's workshop.";if(!API_URL)return "Master Chai is working. Dobby's larger language model is currently borrowing the rest of the compute.";const r=await fetch(API_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:q,history:[]})});if(!r.ok)throw Error();return (await r.json()).reply}
 document.querySelector("#askForm").addEventListener("submit",async e=>{e.preventDefault();if(count>=MAX)return;const input=document.querySelector("#question"),q=input.value.trim();if(!q)return;input.value="";input.disabled=true;try{say("Dobby is thinking…",900);const a=await answer(q);count++;qstones[3-count].material.emissiveIntensity=.05;qstones[3-count].material.color.set(0x3c4b47);document.querySelector("#budget").textContent=["○ ○ ○","● ● ○","● ○ ○","○ ○ ○"][count];setTimeout(()=>say(a,4200),950);if(count===MAX)setTimeout(()=>{document.querySelector("#askForm").classList.add("hidden");say("Master Chai needs the compute back. Of course he does.",4500)},5600)}catch{say("Dobby lost the compute. Master Chai is probably using it.",3200)}finally{input.disabled=false;input.focus()}});
 // resize/render
 function resize(){const r=viewport.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix()}new ResizeObserver(resize).observe(viewport);resize();
-const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();const cp=Math.cos(pitch);camera.position.set(target.x+distance*Math.sin(yaw)*cp,target.y+distance*Math.sin(pitch),target.z+distance*Math.cos(yaw)*cp);camera.lookAt(target);if(lampGroup.userData.swing){lampGroup.rotation.z=Math.sin(t*8)*.22*lampGroup.userData.swing;lampGroup.userData.swing*=.965;if(lampGroup.userData.swing<.02){lampGroup.userData.swing=0;lampGroup.rotation.z=0}}if(bottle.userData.pulse){bottle.scale.y=1+Math.sin(t*15)*.12;bottle.rotation.y+=.08;bottle.userData.pulse*=.97;if(bottle.userData.pulse<.03){bottle.userData.pulse=0;bottle.scale.y=1}}crystal.rotation.y+=.006;crystal.material.emissiveIntensity=crystal.userData.on?2.8+Math.sin(t*3)*.5:1.1;if(pencil.userData.roll){pencil.rotation.z+=.18;pencil.position.x+=.025;if(pencil.position.x>2){pencil.userData.roll=0}}owlHead.rotation.y=Math.sin(t*.7)*.18;
+const clock=new THREE.Clock();function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();if(cameraTransition){
+  const v=cameraTransition, smoothing=.07;
+  yaw+=(v.yaw-yaw)*smoothing;
+  pitch+=(v.pitch-pitch)*smoothing;
+  distance+=(v.distance-distance)*smoothing;
+  target.lerp(new THREE.Vector3(...v.focus),smoothing);
+  if(Math.abs(yaw-v.yaw)<.001&&Math.abs(pitch-v.pitch)<.001&&Math.abs(distance-v.distance)<.01){cameraTransition=null;}
+}
+const cp=Math.cos(pitch);camera.position.set(target.x+distance*Math.sin(yaw)*cp,target.y+distance*Math.sin(pitch),target.z+distance*Math.cos(yaw)*cp);camera.lookAt(target);if(lampGroup.userData.swing){lampGroup.rotation.z=Math.sin(t*8)*.22*lampGroup.userData.swing;lampGroup.userData.swing*=.965;if(lampGroup.userData.swing<.02){lampGroup.userData.swing=0;lampGroup.rotation.z=0}}if(bottle.userData.pulse){bottle.scale.y=1+Math.sin(t*15)*.12;bottle.rotation.y+=.08;bottle.userData.pulse*=.97;if(bottle.userData.pulse<.03){bottle.userData.pulse=0;bottle.scale.y=1}}crystal.rotation.y+=.006;crystal.material.emissiveIntensity=crystal.userData.on?2.8+Math.sin(t*3)*.5:1.1;if(pencil.userData.roll){pencil.rotation.z+=.18;pencil.position.x+=.025;if(pencil.position.x>2){pencil.userData.roll=0}}owlHead.rotation.y=Math.sin(t*.7)*.18;
 livingFrames.forEach((p,i)=>{
   const time=t*.75+p.phase,boost=p.pulse;
   // Characters keep moving even before they are clicked, like Hogwarts portraits.
