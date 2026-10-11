@@ -1,8 +1,6 @@
 /* Dobby's Workshop — handcrafted 3D art room, inspired by the supplied reference screenshots.
    Uses original procedural art and editable Three.js objects, not flattened screenshots. */
-export function installCozyWorkshop({THREE,scene,renderer,interactives,livingFrames,addInteractive,say}){
-  // Keep the existing Hogwarts living frames / licensed Dumbledore photo, replacing only the workshop environment.
-  const portraits=(livingFrames||[]).map(p=>p);
+export function installCozyWorkshop({THREE,scene,renderer,interactives,addInteractive,say}){
   scene.clear();
   interactives.length=0;
   scene.background=new THREE.Color(0x171b19);
@@ -222,15 +220,6 @@ export function installCozyWorkshop({THREE,scene,renderer,interactives,livingFra
   framedArt(-.76,5.25,.59,.78,abstractArt('#263d50','#a287c3','circles'),woodTrim);
   framedArt(.67,4.80,.60,.83,abstractArt('#3d5960','#e88e74','shapes'),walnut);
   framedArt(2.75,6.15,.36,.46,abstractArt('#67817b','#f1c167','circles'),walnut);
-  // Keep the wizard paintings from the prior task, as a smaller animated gallery along the lower wall.
-  const frameLocations=[[-1.05,4.15,.48],[.00,4.05,.48],[1.13,4.12,.46],[2.10,4.00,.43]];
-  portraits.forEach((p,i)=>{
-    const [x,y,s]=frameLocations[i]||[i*.5,4.15,.44];
-    p.frame.position.set(x,y,-4.84);
-    p.frame.scale.setScalar(s);
-    scene.add(p.frame);
-    if(p.hit)interactives.push(p.hit);
-  });
   // "OPEN" neon sign, using multiple glowing text layers and luminous tubes.
   const neonText=tex((g,w,h)=>{
     g.clearRect(0,0,w,h);
@@ -506,5 +495,5 @@ export function installCozyWorkshop({THREE,scene,renderer,interactives,livingFra
     lava.rotation.y=Math.sin(t*.3)*.02;
     neon.material.opacity=.96+Math.sin(t*2)*.02;
   });
-  return {update(t){anim.forEach(fn=>fn(t))},count:objects.length,portraitCount:portraits.length};
+  return {update(t){anim.forEach(fn=>fn(t))},count:objects.length};
 }
