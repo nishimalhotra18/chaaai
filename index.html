@@ -19,8 +19,9 @@
       <canvas id="scene"></canvas>
       <div id="reticle" aria-hidden="true"></div>
       <div id="tooltip" role="status"></div>
+      <button id="dobbyToggle" class="dobby-toggle" type="button" aria-label="Ask Dobby about Master Chai">✦ ASK DOBBY <span aria-hidden="true">↗</span></button>
 
-      <div id="intro" class="overlay">
+      <div id="intro" class="overlay hidden">
         <p class="kicker">MASTER CHAI / STATUS</p>
         <h1>WORKING.<br><em>OBVIOUSLY.</em></h1>
         <p class="lede">Dobby knows where Master Chai is. The interesting question is what he is working on.</p>
@@ -40,6 +41,13 @@
         </div>
       </form>
 
+      <nav class="camera-nav" aria-label="Workshop camera angles">
+        <button type="button" data-scene-view="front" aria-pressed="true">FRONT</button>
+        <button type="button" data-scene-view="left" aria-pressed="false">WINDOW</button>
+        <button type="button" data-scene-view="desk" aria-pressed="false">WORKTABLE</button>
+        <button type="button" data-scene-view="right" aria-pressed="false">DOOR</button>
+      </nav>
+      <button id="soundToggle" class="sound-toggle" type="button" aria-pressed="false">◖ SOUND OFF</button>
       <div class="instructions">
         <span>DRAG TO LOOK</span><span>SCROLL TO MOVE</span><span>CLICK TO INVESTIGATE</span>
       </div>
