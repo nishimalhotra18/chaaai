@@ -287,13 +287,41 @@ export function installCozyWorkshop({THREE,scene,renderer,interactives,livingFra
   cube(4.25,3.75,.11,M(0x9c8c62),0,0,0,boardG);
   cube(4.46,.12,.14,woodTrim,0,1.93,.1,boardG);cube(4.46,.12,.14,woodTrim,0,-1.93,.1,boardG);
   for(const x of [-2.2,2.2])cube(.12,3.9,.14,woodTrim,x,0,.1,boardG);
+  const pinNames=['STUDY','LITTLE JOYS','FIELD NOTES','HAPPY PLACE','SKETCH','FOUND','DAYDREAM','PLANTS','BUG FIX','HELLO','POSTCARD','ART CLUB','CHAI'];
   for(let i=0;i<13;i++){
-    const x=-1.64+(i%4)*1.03+(rand()-.5)*.14,
-          y=1.13-Math.floor(i/4)*.93+(rand()-.5)*.16;
-    const page=cube(.7,.65,.015,M([0xece9df,0x31546a,0x807c5f,0xc89e64][i%4]),x,y,.22,boardG);
-    page.rotation.z=(rand()-.5)*.13;
-    orb(.047,M([0xde765c,0x59a2ba,0xe2b948][i%3]),x,y+.32,.26,boardG);
+    const x=-1.64+(i%4)*1.03+(rand()-.5)*.14;
+    const y=1.13-Math.floor(i/4)*.93+(rand()-.5)*.16;
+    const a=(rand()-.5)*.13;
+    const page=cube(.74,.68,.015,M([0xf0e6d1,0x415d6e,0xd5b18a,0xdedccf][i%4]),x,y,.22,boardG);
+    page.rotation.z=a;
+    const photo=artPlane(.68,.59,(g,w,h)=>{
+      const colors=[['#e3bc91','#709c83','#457487'],['#9fbed4','#df916b','#f2d0a3'],['#c3b6a0','#578276','#bc705c']][i%3];
+      fill(g,w,h,'#f6efda');
+      g.fillStyle=colors[0];g.fillRect(16,16,w-32,h-100);
+      if(i%4===0){
+        g.fillStyle='#e3c776';g.beginPath();g.arc(350,145,58,0,7);g.fill();
+        g.fillStyle=colors[1];g.beginPath();g.moveTo(0,390);g.lineTo(145,215);g.lineTo(272,340);g.lineTo(415,228);g.lineTo(w,385);g.lineTo(w,h);g.lineTo(0,h);g.fill();
+      }else if(i%4===1){
+        g.strokeStyle='#355e4b';g.lineWidth=14;g.beginPath();g.moveTo(236,438);g.quadraticCurveTo(164,223,250,102);g.stroke();
+        for(let j=0;j<10;j++){g.fillStyle=j%2?colors[1]:colors[2];g.beginPath();g.ellipse(174+(j%2)*120,364-j*29,48,18,j*.57,0,7);g.fill();}
+      }else if(i%4===2){
+        for(let j=0;j<7;j++){const xx=110+(j%3)*128,yy=140+Math.floor(j/3)*110;g.fillStyle=[colors[1],colors[2],'#e9bd7f'][j%3];
+          for(let k=0;k<6;k++){const a=k*Math.PI/3;g.beginPath();g.ellipse(xx+Math.cos(a)*27,yy+Math.sin(a)*27,25,15,a,0,7);g.fill();}
+          g.fillStyle='#f2e1aa';g.beginPath();g.arc(xx,yy,14,0,7);g.fill();}
+      }else{
+        g.fillStyle=colors[1];g.beginPath();g.ellipse(250,230,112,124,0,0,7);g.fill();
+        g.fillStyle='#303d42';g.beginPath();g.arc(209,205,10,0,7);g.arc(289,205,10,0,7);g.fill();
+        g.strokeStyle='#313d3b';g.lineWidth=10;g.beginPath();g.arc(250,255,50,.13,Math.PI-.13);g.stroke();
+      }
+      g.fillStyle='#f7ead9';g.fillRect(0,h-84,w,84);
+      type(g,pinNames[i],w/2,h-29,35,'#334b4a','800','center');applyNoise(g,w,h,175);
+    },x,y,.256,0,boardG);
+    photo.rotation.z=a;
+    orb(.047,M([0xde765c,0x59a2ba,0xe2b948][i%3]),x,y+.34,.29,boardG);
   }
+  artPlane(1.52,.29,(g,w,h)=>{
+    g.clearRect(0,0,w,h);type(g,'Community Wall',w/2,373,68,'#193036','600','center');
+  },-.39,1.75,.29,0,boardG);
   const doorG=new THREE.Group();scene.add(doorG);
   doorG.position.set(7.53,3.45,-.80);doorG.rotation.y=-Math.PI/2;
   cube(3.28,5.95,.21,walnut,0,0,0,doorG);
@@ -315,7 +343,7 @@ export function installCozyWorkshop({THREE,scene,renderer,interactives,livingFra
   },0,.35,.44,0,bin);
   handle(bin.children[0],'RECYCLING','Dobby recycles everything except bugs. Master Chai keeps those.');
   // Green cutting mat. Real grid texture, measurements, and border on a physical plane.
-  cube(7.50,.045,2.78,sage,-1.70,1.451,2.03);
+  cube(8.50,.045,2.78,sage,-2.55,1.451,2.03);
   const matTexture=tex((g,w,h)=>{
     fill(g,w,h,'#47754b');
     g.strokeStyle='rgba(218,240,205,.30)';g.lineWidth=1.3;
@@ -324,7 +352,7 @@ export function installCozyWorkshop({THREE,scene,renderer,interactives,livingFra
     g.strokeStyle='rgba(230,242,209,.66)';g.lineWidth=5;g.strokeRect(22,22,w-44,h-44);
     for(let i=0;i<20;i++){g.fillStyle='#cbdec5';g.fillRect(24+i*23,25,1,11)}
   },1024,512);
-  const grid=plane(7.42,2.70,new THREE.MeshStandardMaterial({map:matTexture,roughness:.96,side:THREE.DoubleSide}),-1.70,1.479,2.03);
+  const grid=plane(8.42,2.70,new THREE.MeshStandardMaterial({map:matTexture,roughness:.96,side:THREE.DoubleSide}),-2.55,1.479,2.03);
   grid.rotation.x=-Math.PI/2;
   handle(grid,'CUTTING MAT','A green mat for cutting paper, not corners. Master Chai has been informed.');
   // Stacked colored craft paper at bottom-left, slightly rotated like the reference.
@@ -351,7 +379,7 @@ export function installCozyWorkshop({THREE,scene,renderer,interactives,livingFra
   }
   for(let i=0;i<5;i++)magazine(-5.0+i*2.1,4.00,i);
   // Brilliant cobalt organizer tray with thick raised walls, handle slots, and dozens of decals.
-  const trayG=new THREE.Group();trayG.position.set(3.56,1.54,2.04);scene.add(trayG);
+  const trayG=new THREE.Group();trayG.position.set(3.85,1.54,2.04);scene.add(trayG);
   cube(4.11,.12,2.67,blue,0,0,0,trayG);
   for(const x of [-2.0,2.0])cube(.18,.35,2.65,blue,x,.16,0,trayG);
   for(const z of [-1.28,1.28])cube(4.10,.34,.18,blue,0,.16,z,trayG);
